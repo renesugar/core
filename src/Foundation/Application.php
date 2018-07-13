@@ -119,22 +119,20 @@ class Application extends Container implements ApplicationContract
      *
      * @return bool
      */
-    public function isInstalled()
+    public function isInstalled(): bool
     {
         return $this->bound('flarum.config');
     }
 
-    public function isUpToDate()
+    public function isUpToDate(): bool
     {
         $settings = $this->make(SettingsRepositoryInterface::class);
 
         try {
             $version = $settings->get('version');
         } finally {
-            $isUpToDate = isset($version) && $version === $this->version();
+            return isset($version) && $version === $this->version();
         }
-
-        return $isUpToDate;
     }
 
     /**
@@ -716,8 +714,7 @@ class Application extends Container implements ApplicationContract
             'filesystem'           => [\Illuminate\Filesystem\FilesystemManager::class, \Illuminate\Contracts\Filesystem\Factory::class],
             'filesystem.disk'      => [\Illuminate\Contracts\Filesystem\Filesystem::class],
             'filesystem.cloud'     => [\Illuminate\Contracts\Filesystem\Cloud::class],
-            'hash'                 => [\Illuminate\Hashing\HashManager::class],
-            'hash.driver'          => [\Illuminate\Contracts\Hashing\Hasher::class],
+            'hash'                 => [\Illuminate\Contracts\Hashing\Hasher::class],
             'mailer'               => [\Illuminate\Mail\Mailer::class, \Illuminate\Contracts\Mail\Mailer::class, \Illuminate\Contracts\Mail\MailQueue::class],
             'validator'            => [\Illuminate\Validation\Factory::class, \Illuminate\Contracts\Validation\Factory::class],
             'view'                 => [\Illuminate\View\Factory::class, \Illuminate\Contracts\View\Factory::class],

@@ -31,7 +31,7 @@ class InstallServiceProvider extends AbstractServiceProvider
             PrerequisiteInterface::class,
             function () {
                 return new Composite(
-                    new PhpVersion('5.5.0'),
+                    new PhpVersion('7.1.0'),
                     new PhpExtensions([
                         'dom',
                         'fileinfo',
@@ -42,7 +42,7 @@ class InstallServiceProvider extends AbstractServiceProvider
                         'pdo_mysql',
                     ]),
                     new WritablePaths([
-                        public_path(),
+                        base_path(),
                         public_path('assets'),
                         storage_path(),
                     ])

@@ -117,9 +117,9 @@ class Formatter
         $configurator->Autolink;
         $configurator->tags->onDuplicate('replace');
 
-        $this->events->dispatch(new Configuring($configurator));
-
         $this->configureExternalLinks($configurator);
+
+        $this->events->dispatch(new Configuring($configurator));
 
         return $configurator;
     }
@@ -196,6 +196,7 @@ class Formatter
         $configurator = $this->getConfigurator();
         $configurator->enableJavaScript();
         $configurator->javascript->exportMethods = ['preview'];
+        $configurator->javascript->setMinifier('MatthiasMullieMinify');
 
         return $configurator->finalize([
             'returnParser' => false,

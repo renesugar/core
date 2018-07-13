@@ -13,8 +13,6 @@ namespace Flarum\Forum;
 
 use Flarum\Event\ConfigureForumRoutes;
 use Flarum\Event\ConfigureMiddleware;
-use Flarum\Extension\Event\Disabled;
-use Flarum\Extension\Event\Enabled;
 use Flarum\Foundation\AbstractServiceProvider;
 use Flarum\Http\Middleware\AuthenticateWithSession;
 use Flarum\Http\Middleware\CollectGarbage;
@@ -28,7 +26,6 @@ use Flarum\Http\Middleware\StartSession;
 use Flarum\Http\RouteCollection;
 use Flarum\Http\RouteHandlerFactory;
 use Flarum\Http\UrlGenerator;
-use Flarum\Settings\Event\Saved;
 use Flarum\Settings\SettingsRepositoryInterface;
 use Symfony\Component\Translation\TranslatorInterface;
 use Zend\Stratigility\MiddlewarePipe;
@@ -50,7 +47,6 @@ class ForumServiceProvider extends AbstractServiceProvider
 
         $this->app->singleton('flarum.forum.middleware', function ($app) {
             $pipe = new MiddlewarePipe;
-            $pipe->raiseThrowables();
 
             // All requests should first be piped through our global error handler
             $debugMode = ! $app->isUpToDate() || $app->inDebugMode();
@@ -70,6 +66,27 @@ class ForumServiceProvider extends AbstractServiceProvider
 
             return $pipe;
         });
+
+        $this->app->bind('flarum.forum.assets', function () {
+            $assets = $this->app->make('flarum.frontend.assets.defaults')('forum');
+
+            $assets->add(function () {
+                return [
+                    $this->app->make(Asset\FormatterJs::class),
+                    $this->app->make(Asset\CustomCss::class)
+                ];
+            });
+
+            return $assets;
+        });
+
+        $this->app->bind('flarum.forum.frontend', function () {
+            $view = $this->app->make('flarum.frontend.view.defaults')('forum');
+
+            $view->setAssets($this->app->make('flarum.forum.assets'));
+
+            return $view;
+        });
     }
 
     /**
@@ -86,9 +103,13 @@ class ForumServiceProvider extends AbstractServiceProvider
             'settings' => $this->app->make(SettingsRepositoryInterface::class)
         ]);
 
-        $this->flushWebAppAssetsWhenThemeChanged();
-
-        $this->flushWebAppAssetsWhenExtensionsChanged();
+        $this->app->make('events')->subscribe(
+            new RecompileFrontendAssets(
+                $this->app->make('flarum.forum.assets'),
+                $this->app->make('flarum.locales'),
+                $this->app
+            )
+        );
     }
 
     /**
@@ -112,7 +133,7 @@ class ForumServiceProvider extends AbstractServiceProvider
         if (isset($routes->getRouteData()[0]['GET'][$defaultRoute])) {
             $toDefaultController = $routes->getRouteData()[0]['GET'][$defaultRoute];
         } else {
-            $toDefaultController = $factory->toController(Controller\IndexController::class);
+            $toDefaultController = $factory->toForum(Content\Index::class);
         }
 
         $routes->get(
@@ -120,35 +141,5 @@ class ForumServiceProvider extends AbstractServiceProvider
             'default',
             $toDefaultController
         );
-    }
-
-    protected function flushWebAppAssetsWhenThemeChanged()
-    {
-        $this->app->make('events')->listen(Saved::class, function (Saved $event) {
-            if (preg_match('/^theme_|^custom_less$/i', $event->key)) {
-                $this->getWebAppAssets()->flushCss();
-            }
-        });
-    }
-
-    protected function flushWebAppAssetsWhenExtensionsChanged()
-    {
-        $events = $this->app->make('events');
-
-        $events->listen(Enabled::class, [$this, 'flushWebAppAssets']);
-        $events->listen(Disabled::class, [$this, 'flushWebAppAssets']);
-    }
-
-    public function flushWebAppAssets()
-    {
-        $this->getWebAppAssets()->flush();
-    }
-
-    /**
-     * @return \Flarum\Frontend\FrontendAssets
-     */
-    protected function getWebAppAssets()
-    {
-        return $this->app->make(Frontend::class)->getAssets();
     }
 }
